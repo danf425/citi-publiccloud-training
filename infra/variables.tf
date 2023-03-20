@@ -13,13 +13,19 @@ variable "access_key" {
   default = "temp"
 }
 
+variable "session_token" {
+  default = "temp"
+}
+
 variable "secret_key" {
   default = "temp"
 }
 
 
+
+
 variable "bucket_name" {
-  default = "temp"
+  default = "danf-citi-training-1"
 }
 
 #variable "aws_credentials_file" {
