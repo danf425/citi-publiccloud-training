@@ -120,6 +120,7 @@ spec:
               unzip terraform_1.1.1_linux_amd64.zip
               mv ./terraform /usr/bin/
               terraform --version
+              curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
         - name: DELEGATE_DESCRIPTION
           value: ""
         - name: DELEGATE_TAGS
