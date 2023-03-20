@@ -16,8 +16,7 @@ provider "aws" {
 
 resource "aws_s3_bucket" "b" {
   bucket = var.bucket_name
-  key    = "dags/"
-  content = ""
+#  content = ""
 
   tags = {
     Name        = "temp_bucket"
@@ -28,4 +27,11 @@ resource "aws_s3_bucket" "b" {
 resource "aws_s3_bucket_acl" "example" {
   bucket = aws_s3_bucket.b.id
   acl    = "private"
+}
+
+resource "aws_s3_bucket_object" "dags" {
+    bucket = "${aws_s3_bucket.b.id}"
+    acl    = "private"
+    key    = "dags/"
+    source = "/dev/null"
 }
