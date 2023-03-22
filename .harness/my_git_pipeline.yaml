@@ -1,0 +1,131 @@
+pipeline:
+  name: my_git_pipeline
+  identifier: my_git_pipeline
+  projectIdentifier: DanFlores
+  orgIdentifier: citipubliccloudtraining
+  tags: {}
+  stages:
+    - stage:
+        name: DevDeploy
+        identifier: DevDeploy
+        description: ""
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: <+input>
+            serviceInputs: <+input>
+          environment:
+            environmentRef: <+input>
+            deployToAll: false
+            environmentInputs: <+input>
+            serviceOverrideInputs: <+input>
+            infrastructureDefinitions: <+input>
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: Echo Secrets
+                  identifier: Echo_Secrets
+                  spec:
+                    shell: Bash
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          echo <+secrets.getValue("org.danfawsaccesskey")>
+                          echo <+secrets.getValue("org.danfawssecretkey")>
+                          echo <+secrets.getValue("org.danfawssessiontoken")>
+                    environmentVariables: []
+                    outputVariables: []
+                  timeout: 10m
+              - step:
+                  type: TerraformPlan
+                  name: TF Plan
+                  identifier: TF_Plan
+                  spec:
+                    configuration:
+                      command: Apply
+                      configFiles:
+                        store:
+                          type: Github
+                          spec:
+                            gitFetchType: Branch
+                            connectorRef: org.DanF_GH
+                            branch: main
+                            folderPath: infra
+                      secretManagerRef: org.harnessSecretManager
+                      varFiles:
+                        - varFile:
+                            spec:
+                              content: |-
+                                access_key= "<+secrets.getValue("org.danfawsaccesskey")>"
+                                secret_key= "<+secrets.getValue("org.danfawssecretkey")>"
+                                session_token= "<+secrets.getValue("org.danfawssessiontoken")>"
+                                bucket_name = "<+service.name>"
+                            identifier: terraform.tfvars
+                            type: Inline
+                    provisionerIdentifier: <+service.name>
+                  timeout: 10m
+              - step:
+                  type: HarnessApproval
+                  name: Approval Gate
+                  identifier: Approval_Gate
+                  spec:
+                    approvalMessage: Please review the following information and approve the pipeline progression
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - org._organization_all_users
+                      minimumCount: 1
+                      disallowPipelineExecutor: false
+                    approverInputs: []
+                  timeout: 1d
+              - step:
+                  type: TerraformApply
+                  name: TF Apply
+                  identifier: TerraformApply_1
+                  spec:
+                    configuration:
+                      type: InheritFromPlan
+                    provisionerIdentifier: <+service.name>
+                  timeout: 10m
+              - step:
+                  name: DAGDeployment
+                  identifier: DAGDeployment
+                  template:
+                    templateRef: org.DAG_Deployment_S3cp
+                    versionLabel: Version1
+                    templateInputs:
+                      type: ShellScript
+                      spec:
+                        environmentVariables:
+                          - name: GitHubRepo
+                            type: String
+                            value: https://github.com/danf425/citi-publiccloud-training.git
+              - step:
+                  name: Rollout Deployment
+                  identifier: rolloutDeployment
+                  type: K8sRollingDeploy
+                  timeout: 10m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+            rollbackSteps:
+              - step:
+                  name: Rollback Rollout Deployment
+                  identifier: rollbackRolloutDeployment
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec:
+                    pruningEnabled: false
+        tags: {}
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+        delegateSelectors:
+          - citi-publiccloud-training
