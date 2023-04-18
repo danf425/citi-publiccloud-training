@@ -42,7 +42,7 @@ metadata:
   name: citi-publiccloud-training
   namespace: citi-publiccloud-training
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       harness.io/name: citi-publiccloud-training
